@@ -1,0 +1,92 @@
+name: PickVerse Recovery 2026-09-14 2115
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/pickverse-recovery-20260914-2115.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python deps
+        run: pip install pillow numpy
+      - name: Build recovery assets
+        shell: bash
+        env:
+          SRC_URL: "https://scontent-iad3-2.cdninstagram.com/o1/v/t2/f2/m86/AQO6ej7WC0_gIV7m0WrTiFwJ9YwivvpJYyZa2k1CRLBnmUtogc19fz1yxDo4As_hZnko-J8yyXPDrTWy8vYH8EaDTgVSITSYipzF-wE.mp4?_nc_cat=111&_nc_sid=5e9851&_nc_ht=scontent-iad3-2.cdninstagram.com&_nc_ohc=xi5lKNfuzkcQ7kNvwFsjXDK&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuNzIwLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MTgxMTcxNTA1ODczMDEzMDMsImFzc2V0X2FnZV9kYXlzIjowLCJ2aV91c2VjYXNlX2lkIjoxMDA5OSwiZHVyYXRpb25fcyI6MjEsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=a8390c5fda119f81&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC85QzQ5NDAyNTAzRjkzQjI1RkVFOUQ4RTE4QTk1QzdBM192aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyLzNCNDQyQkM1OUJBQTg2QjBEMTA2QjY5NjM2NUI5OUE5X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbutsnR-tyuQBUCKAJDMywXQDUAAAAAAAAYEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZeadAQA&_nc_gid=3bY7b6AWxaq2k-mVK_Elmg&edm=ANQ71j8EAAAA&_nc_zt=28&_nc_tpa=Q5bMBQIsPhlmk6G2dpFPqeqOhtnwT0sPb-XhQE_lR1A-Lp6Cmq3jeLx84DFDdh7mZsciJaecvoOSeHGB&oh=00_AQIG8D6lPD_yJzIcHUehBiSK3ieJ9o6L-YIk3yVqRlpQ1A&oe=6AAA1114"
+        run: |
+          set -euo pipefail
+          OUT='pickverse-staging/recovery-20260914-2115'
+          mkdir -p "$OUT" work
+          curl -L --retry 3 --fail "$SRC_URL" -o work/source.mp4
+          for spec in '1 1.5' '2 5.4' '3 9.5' '4 13.6' '5 17.7'; do set -- $spec; ffmpeg -y -ss "$2" -i work/source.mp4 -frames:v 1 -vf 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920' "work/raw_$1.jpg" >/dev/null 2>&1; done
+          python3 - <<'PY'
+          from PIL import Image,ImageDraw,ImageFont,ImageFilter,ImageEnhance
+          import numpy as np, wave, os
+          W,H=1080,1920; b='work'; out='pickverse-staging/recovery-20260914-2115'; font='/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
+          labels=['TAKE THE FORGOTTEN CROWN','ENTER THE BLACK ECLIPSE','HUNT THE LAST DRAGON','HOLD THE SKY FORTRESS','CROSS THE FINAL BRIDGE']
+          casts=[(245,175,55),(95,30,170),(45,105,235),(30,135,80),(220,65,25)]
+          def wrap(d,t,f,mw):
+            L=[]; cur=''
+            for w in t.split():
+              z=(cur+' '+w).strip()
+              if d.textbbox((0,0),z,font=f,stroke_width=3)[2] <= mw: cur=z
+              else:
+                if cur:L.append(cur)
+                cur=w
+            if cur:L.append(cur)
+            return L
+          def center(d,t,f,y,fill=(255,255,255),mw=900,sw=4):
+            for line in wrap(d,t,f,mw):
+              bb=d.textbbox((0,0),line,font=f,stroke_width=sw); tw=bb[2]-bb[0]; th=bb[3]-bb[1]
+              d.text(((W-tw)/2,y),line,font=f,fill=fill,stroke_width=sw,stroke_fill=(0,0,0)); y+=th+7
+          for i in range(1,6):
+            im=Image.open(f'{b}/raw_{i}.jpg').convert('RGB'); im=ImageEnhance.Contrast(im).enhance(1.08); im=ImageEnhance.Color(im).enhance(1.05)
+            im=Image.blend(im,Image.new('RGB',(W,H),casts[i-1]),0.09 if i==1 else 0.13).convert('RGBA')
+            im.paste(im.crop((0,0,W,560)).filter(ImageFilter.GaussianBlur(22)),(0,0)); im.paste(im.crop((0,1240,W,1770)).filter(ImageFilter.GaussianBlur(26)),(0,1240))
+            ov=Image.new('RGBA',(W,H),(0,0,0,0)); od=ImageDraw.Draw(ov)
+            for y in range(560): od.line((0,y,W,y),fill=(0,0,0,int(175*(1-y/560))),width=1)
+            od.rounded_rectangle((65,1370,W-65,1635),radius=28,fill=(0,0,0,170),outline=(235,205,140,190),width=3)
+            im=Image.alpha_composite(im,ov); d=ImageDraw.Draw(im)
+            nf=ImageFont.truetype(font,66); d.ellipse((55,105,160,210),fill=(0,0,0,150),outline=(240,210,145),width=4); s=str(i); bb=d.textbbox((0,0),s,font=nf); d.text((108-(bb[2]-bb[0])/2,158-(bb[3]-bb[1])/2-5),s,font=nf,fill=(255,248,225),stroke_width=2,stroke_fill=(0,0,0))
+            if i==1:
+              center(d,'SEND THIS FIRST',ImageFont.truetype(font,54),110,(255,226,160),900,3); center(d,'WHICH FINAL QUEST ARE THEY CHOOSING?',ImageFont.truetype(font,68),245,(255,255,255),930,5)
+            center(d,labels[i-1],ImageFont.truetype(font,60 if len(labels[i-1])>23 else 68),1435,(255,252,242),850,4)
+            if i==5:center(d,'LOCK 1–5. THEN COMPARE.',ImageFont.truetype(font,44),1680,(255,225,160),900,3)
+            im.convert('RGB').save(f'work/scene_{i}.jpg',quality=94,subsampling=0)
+          st=Image.open('work/scene_1.jpg').convert('RGBA'); d=ImageDraw.Draw(st); d.rounded_rectangle((65,1260,W-65,1760),radius=35,fill=(0,0,0,180),outline=(235,205,140,190),width=3); center(d,'NEW REEL',ImageFont.truetype(font,68),1320,(255,226,160),850,3); center(d,'SEND IT BEFORE YOU ANSWER.',ImageFont.truetype(font,50),1450,(255,255,255),870,4); center(d,'LOCK THEIR NUMBER FIRST.',ImageFont.truetype(font,50),1550,(255,255,255),870,4); st.convert('RGB').save(f'{out}/story.jpg',quality=90,subsampling=0); Image.open('work/scene_1.jpg').save(f'{out}/cover.jpg',quality=90,subsampling=0)
+          sr=44100; dur=20.5; t=np.arange(int(sr*dur))/sr; a=np.zeros_like(t); chords=[[73.42,110,146.83],[65.41,98,130.81],[58.27,87.31,116.54],[55,82.41,110],[73.42,110,146.83]]; seg=dur/5
+          for j,ch in enumerate(chords):
+            m=(t>=j*seg)&(t<(j+1)*seg); x=t[m]-j*seg; e=np.clip(np.minimum(x/.6,1)*np.minimum((seg-x)/.7,1),0,1); q=np.zeros_like(x)
+            for k,f in enumerate(ch): q+=.09*np.sin(2*np.pi*f*x+.4*k)+.035*np.sin(2*np.pi*2*f*x+.7*k)
+            a[m]+=q*e
+          rng=np.random.default_rng(91421)
+          for bt in np.arange(0,dur,.82):
+            m=(t>=bt)&(t<bt+.32); x=t[m]-bt; a[m]+=.24*np.sin(2*np.pi*(58-25*x)*x)*np.exp(-11*x)+rng.normal(0,1,m.sum())*.02*np.exp(-20*x)
+          a=a/(np.max(np.abs(a))+1e-9)*.86
+          with wave.open('work/nightfall.wav','w') as wf: wf.setnchannels(2); wf.setsampwidth(2); wf.setframerate(sr); wf.writeframes((np.stack([a,a],1)*32767).astype(np.int16).tobytes())
+          PY
+          cat > work/stills.txt <<'EOF'
+          file 'scene_1.jpg'
+          duration 4.1
+          file 'scene_2.jpg'
+          duration 4.1
+          file 'scene_3.jpg'
+          duration 4.1
+          file 'scene_4.jpg'
+          duration 4.1
+          file 'scene_5.jpg'
+          duration 4.1
+          file 'scene_5.jpg'
+          EOF
+          ffmpeg -y -f concat -safe 0 -i work/stills.txt -i work/nightfall.wav -vf 'fps=30,scale=1080:1920,format=yuv420p' -c:v libx264 -preset medium -crf 24 -c:a aac -b:a 96k -shortest -movflags +faststart "$OUT/reel.mp4" >/dev/null 2>&1
+          ffprobe -v error -show_entries format=duration:stream=codec_name,width,height -of json "$OUT/reel.mp4"
+      - name: Commit recovery assets
+        run: |
+          git config user.name 'PickVerse Recovery Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add pickverse-staging/recovery-20260914-2115
+          git commit -m 'temp: generated PickVerse recovery assets'
+          git push
